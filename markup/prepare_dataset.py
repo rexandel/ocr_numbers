@@ -196,6 +196,122 @@ def prepare_balanced_dataset(
     print(f"Train: {train_path}")
     print(f"Valid: {valid_path}")
 
+def prepare_ruzhimmash_dataset(seed: int = 42, use_augmented: bool = True):
+    """Подготовка датасета только для ruzhimmash (только number)"""
+    random.seed(seed)
+    
+    if use_augmented:
+        # Берём из аугментированного датасета
+        source_path = config.get_dataset_augmentation_path() / "train" / "ruzhimmash"
+    else:
+        # Берём из оригинального датасета
+        source_path = config.get_dataset_path() / "train" / "ruzhimmash"
+    
+    output_path = config.get_dataset_path() / "train_ruzhimmash"
+    
+    if output_path.exists():
+        print(f"Удаление старого датасета из {output_path}...")
+        shutil.rmtree(output_path)
+    
+    train_path = output_path / "train"
+    valid_path = output_path / "valid"
+    train_path.mkdir(parents=True, exist_ok=True)
+    valid_path.mkdir(parents=True, exist_ok=True)
+    
+    # Для ruzhimmash берём только number, 100%
+    txt_file = source_path / "number.txt"
+    img_dir = source_path / "number"
+    
+    if not txt_file.exists() or not img_dir.exists():
+        print(f"Ошибка: number не найден в {source_path}")
+        return
+    
+    df = pd.read_csv(txt_file, sep=' ', header=None, names=['filename', 'label'])
+    
+    data = []
+    for _, row in df.iterrows():
+        filename = row['filename']
+        label = str(row['label'])
+        
+        img_path = img_dir / f"{filename}.jpg"
+        if not img_path.exists():
+            for ext in ['.jpeg', '.png', '.JPG', '.JPEG', '.PNG']:
+                alt_path = img_dir / f"{filename}{ext}"
+                if alt_path.exists():
+                    img_path = alt_path
+                    break
+            else:
+                continue
+        
+        data.append({
+            'filename': filename,
+            'label': label,
+            'source': 'number',
+            'img_path': img_path
+        })
+    
+    print(f"number: {len(data)} примеров доступно")
+    
+    random.shuffle(data)
+    
+    valid_ratio = 0.20
+    valid_count = int(len(data) * valid_ratio)
+    
+    valid_data = data[:valid_count]
+    train_data = data[valid_count:]
+    
+    print(f"\n{'='*60}")
+    print("РАСПРЕДЕЛЕНИЕ (ruzhimmash):")
+    print(f"Train: {len(train_data)} примеров ({100*(1-valid_ratio):.0f}%)")
+    print(f"Valid: {len(valid_data)} примеров ({100*valid_ratio:.0f}%)")
+    
+    def save_dataset(data_list, target_path):
+        labels_data = []
+        for item in data_list:
+            src_img = item['img_path']
+            original_ext = src_img.suffix
+            dst_filename = f"{item['filename']}{original_ext}"
+            dst_img = target_path / dst_filename
+            
+            try:
+                shutil.copy2(src_img, dst_img)
+            except Exception as e:
+                print(f"Ошибка при копировании {src_img}: {e}")
+                continue
+            
+            labels_data.append({
+                'filename': dst_filename,
+                'words': item['label']
+            })
+        
+        labels_df = pd.DataFrame(labels_data)
+        labels_df.to_csv(target_path / "labels.csv", index=False, sep=',')
+        print(f"Сохранено {len(labels_data)} примеров в {target_path}")
+    
+    print(f"\n{'='*60}")
+    print("СОХРАНЕНИЕ:")
+    save_dataset(train_data, train_path)
+    save_dataset(valid_data, valid_path)
+    
+    print(f"\n{'='*60}")
+    print("ГОТОВО!")
+    print(f"Train: {train_path}")
+    print(f"Valid: {valid_path}")
+
+
 if __name__ == "__main__":
-    prepare_balanced_dataset()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--manufacturer', '-m', choices=['begickaya', 'ruzhimmash', 'all'], 
+                        default='begickaya', help='Выбор производителя')
+    parser.add_argument('--no-aug', action='store_true', help='Использовать оригинальный датасет без аугментации')
+    args = parser.parse_args()
+    
+    if args.manufacturer == 'begickaya':
+        prepare_balanced_dataset()
+    elif args.manufacturer == 'ruzhimmash':
+        prepare_ruzhimmash_dataset(use_augmented=not args.no_aug)
+    else:
+        # TODO: объединённый датасет
+        print("Объединённый датасет пока не реализован")
 
