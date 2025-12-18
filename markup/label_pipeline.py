@@ -6,12 +6,12 @@ import yaml
 from tqdm import tqdm
 import json
 
-sys.path.insert(0, 'E:/GitHub/ocr')
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from ocr_number.ocr_deti_kubgu.utils.Config import Config
-from ocr_number.ocr_deti_kubgu.model import Model
-from ocr_number.ocr_deti_kubgu.utils.LabelConverter import CTCLabelConverter
-from ocr_number.ocr_deti_kubgu.utils.OCRDataset import OCRCollate
+from core.helpers.settings import settings, settings_reader
+from core.network.recognizer import recognizer
+from core.helpers.text_encoder import text_encoder
+from core.helpers.image_dataset import image_collator
 
 
 def batch_label_and_review():
@@ -24,22 +24,19 @@ def batch_label_and_review():
 
     print("\nЗагрузка модели...")
     
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        config_data = yaml.safe_load(f)
-    
-    config = Config(**config_data)
+    config = settings_reader.load(CONFIG_PATH)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    converter = CTCLabelConverter(config.characters)
-    config.characters = converter.characters
+    encoder = text_encoder(config.decoder.kind, config.alphabet)
+    config.alphabet = encoder.symbols
     
-    model = Model(config).to(device)
+    model = recognizer(config).to(device)
     
     checkpoint = torch.load(MODEL_PATH, map_location=device)
     model.load_state_dict(checkpoint)
     model.eval()
     
-    collator = OCRCollate(config)
+    collator = image_collator(config)
     
     print(f"Модель загружена")
     
@@ -60,14 +57,14 @@ def batch_label_and_review():
         
         try:
             img = Image.open(image_path).convert('L')
-            processed_img = collator._resize_and_pad(img)
+            processed_img = collator._process(img)
             processed_img = processed_img.unsqueeze(0).to(device)
             
             with torch.no_grad():
                 output = model(processed_img)
                 _, indices = output.max(2)
-                preds_size = torch.IntTensor([output.size(1)]).to(device)
-                pred_str = converter.decode(indices.view(-1).data.cpu(), preds_size.data.cpu())
+                preds_size = torch.IntTensor([output.size(1)])
+                pred_str = encoder.decode(indices.view(-1).data.cpu(), preds_size.data.cpu())
                 prediction = pred_str[0] if pred_str else ""
             
             auto_predictions[filename] = prediction
