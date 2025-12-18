@@ -233,7 +233,9 @@ def visualize_augmentations(augmented: dict, figsize: tuple = (16, 12)) -> None:
         axes[idx].axis('off')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(os.getcwd() + '/utils', "augmentation_output", 'augmentation_demo.png'), dpi=150, bbox_inches='tight')
+    output_dir = os.path.join(os.path.dirname(__file__), "augmentation_output")
+    os.makedirs(output_dir, exist_ok=True)
+    plt.savefig(os.path.join(output_dir, 'augmentation_demo.png'), dpi=150, bbox_inches='tight')
     plt.show()
 
 
@@ -254,7 +256,11 @@ def demo_augmentation(image_path: str) -> dict:
 
 
 if __name__ == "__main__":
-    dataset_path = r"D:\GitHub\ocr_numbers\dataset"
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from config import get_dataset_path
+
+    dataset_path = str(get_dataset_path())
 
     test_image = None
     for root, _, files in os.walk(dataset_path):
@@ -267,7 +273,7 @@ if __name__ == "__main__":
 
     if test_image:
         augmented = demo_augmentation(test_image)
-        output_dir = os.path.join(os.getcwd() + '/utils', "augmentation_output")
+        output_dir = os.path.join(os.path.dirname(__file__), "augmentation_output")
         base_name = os.path.splitext(os.path.basename(test_image))[0]
         save_augmented_images(augmented, output_dir, base_name)
 

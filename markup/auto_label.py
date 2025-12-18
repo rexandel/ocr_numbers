@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import List
-
+from config import get_dataset_path
+import sys
+from pathlib import Path
 
 def label_folder(folder_path: str, label: str) -> int:
     folder = Path(folder_path)
@@ -34,9 +36,12 @@ def label_folder(folder_path: str, label: str) -> int:
 
 
 def main():
-    folder = r"D:\GitHub\ocr_numbers\dataset\train\begickaya\text"
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    
+    # Пример: dataset/train/begickaya/text
+    folder = get_dataset_path() / "train" / "begickaya" / "text"
     label = "55"
-    label_folder(folder, label)
+    label_folder(str(folder), label)
 
 
 if __name__ == "__main__":

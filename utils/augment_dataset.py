@@ -176,11 +176,12 @@ class DatasetAugmenter:
 
 
 def main():
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from config import get_dataset_path, get_dataset_augmentation_path
 
-    source_dir = project_root / "dataset"
-    output_dir = project_root / "dataset_augmentation"
+    source_dir = get_dataset_path()
+    output_dir = get_dataset_augmentation_path()
 
     splits = ['train']
 

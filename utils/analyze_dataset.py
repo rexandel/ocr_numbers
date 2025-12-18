@@ -1,9 +1,13 @@
 import os
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_dataset_path
+
 COLORS = ['#c2e5f5', '#5296b8', '#135669', '#1a7a8c', '#8bc4d9']
-DATASET_PATH = r"D:\GitHub\ocr_numbers\dataset"
+DATASET_PATH = str(get_dataset_path())
 
 
 def count_images_in_folder(folder_path: str) -> int:
@@ -158,7 +162,9 @@ def create_all_charts():
     plt.suptitle('Распределение изображений в датасете', fontsize=16, fontweight='bold', y=1.02)
     plt.tight_layout()
 
-    output_path = os.path.join(os.path.dirname(__file__), 'dataset_analysis.png')
+    output_dir = os.path.join(os.path.dirname(__file__), 'dataset_analysis')
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, 'dataset_analysis.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
     print(f"\nСтолбчатые графики сохранены: {output_path}")
     plt.show()
@@ -192,7 +198,7 @@ def create_all_charts():
     plt.suptitle('Процентное соотношение категорий в датасете', fontsize=16, fontweight='bold', y=1.02)
     plt.tight_layout()
 
-    output_path_pie = os.path.join(os.path.dirname(__file__), 'dataset_analysis_pie.png')
+    output_path_pie = os.path.join(output_dir, 'dataset_analysis_pie.png')
     plt.savefig(output_path_pie, dpi=150, bbox_inches='tight', facecolor='white')
     print(f"Круговые диаграммы сохранены: {output_path_pie}")
     plt.show()
