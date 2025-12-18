@@ -1,163 +1,43 @@
-import torch
 from pathlib import Path
-from PIL import Image
-import sys
-import yaml
-from tqdm import tqdm
-import json
-
-sys.path.insert(0, 'E:/GitHub/ocr')
-
-from ocr_number.ocr_deti_kubgu.utils.Config import Config
-from ocr_number.ocr_deti_kubgu.model import Model
-from ocr_number.ocr_deti_kubgu.utils.LabelConverter import CTCLabelConverter
-from ocr_number.ocr_deti_kubgu.utils.OCRDataset import OCRCollate
+from typing import List
 
 
-def batch_label_and_review():
-
-    CONFIG_PATH = "E:/GitHub/ocr/ocr_number/ocr_deti_kubgu/config/config.yaml"
-    MODEL_PATH = "E:/GitHub/ocr/ocr_number/ocr_deti_kubgu/saved_models/universal_model_from_scratch/best_model.pth"
-    INPUT_DIR = "E:/GitHub/ocr/dataset/train/ruzhimmash/number"
-    AUTO_FILE = "E:/GitHub/ocr/auto_predictions.json"
-    OUTPUT_FILE = "E:/GitHub/ocr/dataset/train/ruzhimmash/number.txt"
-
-    print("\nЗагрузка модели...")
+def label_folder(folder_path: str, label: str) -> int:
+    folder = Path(folder_path)
     
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        config_data = yaml.safe_load(f)
+    if not folder.exists():
+        print(f"Папка не найдена: {folder}")
+        return 0
     
-    config = Config(**config_data)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
-    converter = CTCLabelConverter(config.characters)
-    config.characters = converter.characters
-    
-    model = Model(config).to(device)
-    
-    checkpoint = torch.load(MODEL_PATH, map_location=device)
-    model.load_state_dict(checkpoint)
-    model.eval()
-    
-    collator = OCRCollate(config)
-    
-    print(f"Модель загружена")
-    
-    print("АВТОМАТИЧЕСКАЯ РАЗМЕТКА")
-    
-    input_path = Path(INPUT_DIR)
-    image_files = list(input_path.glob("*.jpg"))
+    extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
+    image_files: List[Path] = []
+    for ext in extensions:
+        image_files.extend(folder.glob(ext))
     
     if not image_files:
-        image_files = list(input_path.glob("*.jpeg"))
+        print(f"Изображения не найдены в: {folder}")
+        return 0
     
-    print(f"Найдено {len(image_files)} изображений")
+    image_files = sorted(image_files)
     
-    auto_predictions = {}
+    txt_path = folder.parent / f"{folder.name}.txt"
     
-    for image_path in tqdm(image_files, desc="Авторазметка"):
-        filename = image_path.stem
-        
-        try:
-            img = Image.open(image_path).convert('L')
-            processed_img = collator._resize_and_pad(img)
-            processed_img = processed_img.unsqueeze(0).to(device)
-            
-            with torch.no_grad():
-                output = model(processed_img)
-                _, indices = output.max(2)
-                preds_size = torch.IntTensor([output.size(1)]).to(device)
-                pred_str = converter.decode(indices.view(-1).data.cpu(), preds_size.data.cpu())
-                prediction = pred_str[0] if pred_str else ""
-            
-            auto_predictions[filename] = prediction
-            
-        except Exception as e:
-            print(f"Ошибка при обработке {filename}: {e}")
-            auto_predictions[filename] = ""
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        for img_path in image_files:
+            stem = img_path.stem
+            f.write(f"{stem} {label}\n")
     
-    with open(AUTO_FILE, 'w', encoding='utf-8') as f:
-        json.dump(auto_predictions, f, ensure_ascii=False, indent=2)
+    print(f"Создан файл: {txt_path}")
+    print(f"Размечено изображений: {len(image_files)}")
     
-    print(f"\nАвтопредсказания сохранены в {AUTO_FILE}")
-    
-    print("\n" + "="*30)
-    print("ПРОВЕРКА И ИСПРАВЛЕНИЕ")
-    print("Управление:")
-    print("  Enter - принять предсказание")
-    print("  введите текст - исправить")
-    print("  's' - пропустить")
-    print("  'q' - завершить")
-    print("-"*60)
-    
-    final_labels = {}
-    corrected = 0
-    skipped = []
-    
-    for i, (filename, auto_pred) in enumerate(auto_predictions.items()):
-        image_path = None
-        for ext in ['.jpg', '.jpeg', '.png', '.bmp']:
-            path = input_path / f"{filename}{ext}"
-            if path.exists():
-                image_path = path
-                break
-        
-        if not image_path:
-            print(f"Файл не найден: {filename}")
-            continue
-        
-        try:
-            img = Image.open(image_path)
-            img.show()
-        except:
-            print(f"Не удалось открыть: {filename}")
-            continue
-        
-        print(f"\n[{i+1}/{len(auto_predictions)}] {filename}")
-        print(f"Автопредсказание: '{auto_pred}'")
-        
-        while True:
-            user_input = input("Введите правильный текст (Enter-принять, s-пропустить, q-выход): ").strip()
-            
-            if user_input.lower() == 'q':
-                print("\nДосрочное завершение...")
-                break
-            elif user_input.lower() == 's':
-                print(f"Пропущено: {filename}")
-                skipped.append(filename)
-                break
-            elif user_input == '':
-                final_labels[filename] = auto_pred
-                break
-            else:
-                final_labels[filename] = user_input
-                corrected += 1
-                break
-        
-        if user_input.lower() == 'q':
-            break
-    
-    print(f"\nСохранение {len(final_labels)} меток в {OUTPUT_FILE}")
-    
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        for filename, label in final_labels.items():
-            f.write(f"{filename} {label}\n")
-    
-    print(f"\n" + "="*60)
-    print("ИТОГИ:")
-    print(f"Всего изображений: {len(auto_predictions)}")
-    print(f"Размечено: {len(final_labels)}")
-    print(f"Пропущено: {len(skipped)}")
-    print(f"Исправлено: {corrected} ({corrected/len(final_labels)*100:.1f}%)")
-    
-    if corrected > 0:
-        print(f"\nПримеры исправлений (первые 5):")
-        corrections = [(k, auto_predictions[k], final_labels[k]) 
-                      for k in final_labels.keys() if auto_predictions[k] != final_labels[k]]
-        for filename, auto, final in corrections[:5]:
-            print(f"  {filename}: '{auto}' -> '{final}'")
-    
-    print(f"\nРазметка завершена!")
+    return len(image_files)
+
+
+def main():
+    folder = r"D:\GitHub\ocr_numbers\dataset\train\begickaya\text"
+    label = "55"
+    label_folder(folder, label)
+
 
 if __name__ == "__main__":
-    batch_label_and_review()
+    main()
