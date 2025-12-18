@@ -64,10 +64,28 @@ class settings_reader:
         return None
 
     @staticmethod
+    def _get_training_dataset_path():
+        try:
+            import sys
+            import os
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            sys.path.insert(0, project_root)
+            from config import get_training_dataset_path
+            return str(get_training_dataset_path())
+        except Exception:
+            return None
+
+    @staticmethod
     def _load_yaml(path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
+                
+                # Переопределяем путь к датасету из config.ini
+                dataset_path = settings_reader._get_training_dataset_path()
+                if dataset_path and 'data' in data:
+                    data['data']['root'] = dataset_path
+                
                 return settings(**data)
         except FileNotFoundError:
             print(f"file not found: {path}")

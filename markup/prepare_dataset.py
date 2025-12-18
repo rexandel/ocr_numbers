@@ -3,14 +3,27 @@ import shutil
 from pathlib import Path
 import random
 from collections import defaultdict
+import sys
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+import config
 
 def prepare_balanced_dataset(
-    source_dir: str = "E:/GitHub/ocr/dataset/train/begickaya/crops",
-    output_dir: str = "E:/GitHub/ocr/universal_ocr/dataset",
+    source_dir: str = None,
+    output_dir: str = None,
     seed: int = 42
 ):
 
     random.seed(seed)
+    
+    if source_dir is None:
+        # По умолчанию используем begickaya из dataset/train
+        source_dir = config.get_dataset_path() / "train" / "begickaya"
+    
+    if output_dir is None:
+        # По умолчанию сохраняем в dataset/train_balanced
+        output_dir = config.get_training_dataset_path()
     
     source_path = Path(source_dir)
     output_path = Path(output_dir)

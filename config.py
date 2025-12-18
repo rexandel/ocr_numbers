@@ -26,6 +26,13 @@ def get_dataset_path() -> Path:
     return get_project_root() / dataset_rel
 
 
+def get_training_dataset_path() -> Path:
+    """Возвращает путь к папке training_dataset"""
+    config = get_config()
+    dataset_rel = config.get('paths', 'training_dataset', fallback='dataset/train_balanced')
+    return get_project_root() / dataset_rel
+
+
 def get_dataset_augmentation_path() -> Path:
     """Возвращает путь к папке dataset_augmentation"""
     config = get_config()

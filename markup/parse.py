@@ -1,5 +1,10 @@
 import os
 from pathlib import Path
+import sys
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+import config
 
 def windows_sort_key(filename):
     import re
@@ -13,9 +18,10 @@ def windows_sort_key(filename):
     return alphanum_key(filename)
 
 def create_image_list_file():
-    images_dir = Path(r"E:\GitHub\ocr\dataset\train\ruzhimmash\number")
+    dataset_root = config.get_dataset_path()
+    images_dir = dataset_root / "train" / "ruzhimmash" / "number"
     
-    output_file = Path(r"E:\GitHub\ocr\dataset\train\ruzhimmash") / "number.txt"
+    output_file = dataset_root / "train" / "ruzhimmash" / "number.txt"
     
     if not images_dir.exists():
         print(f"Ошибка: Папка {images_dir} не найдена!")

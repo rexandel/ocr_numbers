@@ -10,7 +10,7 @@ class trainer:
     def __init__(self, cfg, weights_path=None):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.cfg = cfg
-        self.output_dir = Path(f"ocr_number/core/weights/{self.cfg.name}")
+        self.output_dir = Path(__file__).parent / "weights" / self.cfg.name
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.encoder = text_encoder(self.cfg.decoder.kind, self.cfg.alphabet)
         self.cfg.alphabet = self.encoder.symbols
