@@ -37,9 +37,9 @@ def prepare_balanced_dataset(
     train_path.mkdir(parents=True, exist_ok=True)
     valid_path.mkdir(parents=True, exist_ok=True)
     
-    config = {
+    dataset_config = {
         'number': {
-            'sample_ratio': 0.80,
+            'sample_ratio': 1.0,
             'valid_ratio': 0.25
         },
         'prod': {
@@ -49,11 +49,15 @@ def prepare_balanced_dataset(
         'year': {
             'sample_ratio': 0.10,
             'valid_ratio': 0.10
+        },
+        'text': {
+            'sample_ratio': 0.10,
+            'valid_ratio': 0.10
         }
     }
     
     all_datasets = {}
-    for dataset_type in ["number", "prod", "year"]:
+    for dataset_type in ["number", "prod", "year", "text"]:
         txt_file = source_path / f"{dataset_type}.txt"
         img_dir = source_path / dataset_type
         
@@ -91,23 +95,26 @@ def prepare_balanced_dataset(
     number_available = len(all_datasets.get('number', []))
     prod_available = len(all_datasets.get('prod', []))
     year_available = len(all_datasets.get('year', []))
+    text_available = len(all_datasets.get('text', []))
     
-    target_number = int(number_available * 0.80)
-    target_prod = min(int(prod_available * 1.0), int(target_number * 0.125))
-    target_year = min(int(year_available * 1.0), int(target_number * 0.125))
+    target_number = number_available  # 100% от number
+    target_prod = int(prod_available * 0.10)  # 10% от prod
+    target_year = int(year_available * 0.10)  # 10% от year
+    target_text = int(text_available * 0.10)  # 10% от text
     
     print(f"\n{'='*60}")
     print("РАСПРЕДЕЛЕНИЕ:")
-    print(f"number: {target_number} примеров (80%)")
+    print(f"number: {target_number} примеров (100%)")
     print(f"prod: {target_prod} примеров (10%)")
     print(f"year: {target_year} примеров (10%)")
-    total_target = target_number + target_prod + target_year
+    print(f"text: {target_text} примеров (10%)")
+    total_target = target_number + target_prod + target_year + target_text
     print(f"ИТОГО: {total_target} примеров")
     
     train_data = []
     valid_data = []
     
-    for dataset_type, target_count in [('number', target_number), ('prod', target_prod), ('year', target_year)]:
+    for dataset_type, target_count in [('number', target_number), ('prod', target_prod), ('year', target_year), ('text', target_text)]:
         if dataset_type not in all_datasets:
             continue
         
@@ -116,7 +123,7 @@ def prepare_balanced_dataset(
         
         selected = data[:target_count]
         
-        valid_ratio = config[dataset_type]['valid_ratio']
+        valid_ratio = dataset_config[dataset_type]['valid_ratio']
         valid_count = int(len(selected) * valid_ratio)
         
         type_valid = selected[:valid_count]

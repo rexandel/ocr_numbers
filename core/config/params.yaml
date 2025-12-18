@@ -6,7 +6,7 @@ max_steps: 3000
 eval_interval: 200
 
 data:
-  root: "dataset"  # переопределяется из config.ini
+  root: "dataset/train_balanced"
   workers: 0
 
 rectifier:
